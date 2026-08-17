@@ -1,5 +1,5 @@
 # Stage 1: Builder
-FROM ubuntu:22.04 as builder
+FROM ubuntu:22.04 AS builder
 
 ARG GOLANG_VERSION=1.21.5
 ARG CLANG_VERSION=14
@@ -24,6 +24,13 @@ RUN wget -q https://go.dev/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz && \
 ENV PATH="/usr/local/go/bin:${PATH}" \
     CLANG="clang-${CLANG_VERSION}"
 
+# Install bpftool (static build) to generate vmlinux.h from kernel BTF
+ARG BPFTOOL_VERSION=v7.4.0
+RUN wget -q https://github.com/libbpf/bpftool/releases/download/${BPFTOOL_VERSION}/bpftool-${BPFTOOL_VERSION}-amd64.tar.gz && \
+    tar -xzf bpftool-${BPFTOOL_VERSION}-amd64.tar.gz -C /usr/local/bin bpftool && \
+    rm bpftool-${BPFTOOL_VERSION}-amd64.tar.gz && \
+    chmod +x /usr/local/bin/bpftool
+
 WORKDIR /build
 
 # Copy source code
@@ -31,6 +38,7 @@ COPY . .
 
 # Build eBPF programs
 RUN mkdir -p /build/bin && \
+    bpftool btf dump file /sys/kernel/btf/vmlinux format c > pkg/ebpf/vmlinux.h && \
     ${CLANG} -O2 -target bpf -c pkg/ebpf/program.c -o /build/bin/program.o
 
 # Build Go binary

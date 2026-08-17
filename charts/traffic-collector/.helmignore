@@ -1,0 +1,23 @@
+# Patterns to ignore when building packages.
+# This supports shell glob patterns, relative path patterns, and
+# patterns matching files and directories.
+#
+# More details, check the "Ignore Files and Patterns" section of
+# https://helm.sh/docs/chart_template_guide/charts_layout/
+
+.DS_Store
+.git/
+.gitignore
+.helm/
+.helmignore
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+*.code-workspace
+.vscode-test/
+.venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/

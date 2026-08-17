@@ -1,0 +1,19 @@
+apiVersion: v2
+name: traffic-collector
+description: A lightweight eBPF-based network traffic collector for Kubernetes
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - observability
+  - tracing
+  - ebpf
+  - networking
+  - tempo
+  - jaeger
+maintainers:
+  - name: João Simões
+    email: jarpsimoes@gmail.com
+home: https://github.com/jarpsimoes/traffic-collector
+sources:
+  - https://github.com/jarpsimoes/traffic-collector

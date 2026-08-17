@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "traffic-collector.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "traffic-collector.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "traffic-collector.selectorLabels" . | nindent 6 }}
+  {{- with .Values.daemonset.updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.collector.healthCheckPort }}"
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "traffic-collector.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "traffic-collector.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      hostNetwork: {{ .Values.daemonset.hostNetwork }}
+      hostPID: {{ .Values.daemonset.hostPID }}
+      dnsPolicy: {{ .Values.daemonset.dnsPolicy }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        {{- with .Values.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: health
+          containerPort: {{ .Values.collector.healthCheckPort }}
+          protocol: TCP
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: LOG_LEVEL
+          value: {{ .Values.collector.logLevel }}
+        - name: HEALTH_CHECK_PORT
+          value: "{{ .Values.collector.healthCheckPort }}"
+        {{- if .Values.tempo.enabled }}
+        - name: TEMPO_ENDPOINT
+          value: {{ .Values.tempo.endpoint }}
+        {{- end }}
+        {{- if .Values.jaeger.enabled }}
+        - name: JAEGER_ENDPOINT
+          value: {{ .Values.jaeger.endpoint }}
+        - name: JAEGER_AGENT_HOST
+          value: {{ .Values.jaeger.agentHost }}
+        - name: JAEGER_AGENT_PORT
+          value: "{{ .Values.jaeger.agentPort }}"
+        {{- end }}
+        {{- if .Values.healthCheck.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: health
+          initialDelaySeconds: {{ .Values.healthCheck.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthCheck.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthCheck.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthCheck.failureThreshold }}
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: health
+          initialDelaySeconds: {{ .Values.healthCheck.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthCheck.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthCheck.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthCheck.failureThreshold }}
+        {{- end }}
+        {{- with .Values.resources }}
+        resources:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+        volumeMounts:
+        - name: debugfs
+          mountPath: /sys/kernel/debug
+        - name: sysfs
+          mountPath: /sys
+        - name: procfs
+          mountPath: /proc
+        - name: bpf
+          mountPath: /sys/fs/bpf
+      volumes:
+      - name: debugfs
+        hostPath:
+          path: /sys/kernel/debug
+          type: Directory
+      - name: sysfs
+        hostPath:
+          path: /sys
+          type: Directory
+      - name: procfs
+        hostPath:
+          path: /proc
+          type: Directory
+      - name: bpf
+        hostPath:
+          path: /sys/fs/bpf
+          type: DirectoryOrCreate
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 30

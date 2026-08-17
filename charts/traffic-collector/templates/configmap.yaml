@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "traffic-collector.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "traffic-collector.labels" . | nindent 4 }}
+data:
+  collector-config.yaml: |
+    # Traffic Collector Configuration
+    collector:
+      logLevel: {{ .Values.collector.logLevel }}
+      healthCheckPort: {{ .Values.collector.healthCheckPort }}
+      batchSize: {{ .Values.collector.batchSize }}
+      batchTimeout: {{ .Values.collector.batchTimeout }}
+    
+    {{- if .Values.tempo.enabled }}
+    tempo:
+      enabled: true
+      endpoint: {{ .Values.tempo.endpoint }}
+      insecure: {{ .Values.tempo.insecure }}
+    {{- end }}
+    
+    {{- if .Values.jaeger.enabled }}
+    jaeger:
+      enabled: true
+      endpoint: {{ .Values.jaeger.endpoint }}
+      agentHost: {{ .Values.jaeger.agentHost }}
+      agentPort: {{ .Values.jaeger.agentPort }}
+    {{- end }}

@@ -1,0 +1,29 @@
+# Development values for traffic-collector
+
+image:
+  repository: jarpsimoes/traffic-collector
+  tag: "dev"
+
+collector:
+  logLevel: debug
+
+tempo:
+  enabled: true
+  endpoint: "http://tempo:4317"
+  insecure: true
+
+jaeger:
+  enabled: true
+  agentHost: "jaeger-agent"
+  agentPort: 6831
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+nodeSelector:
+  kubernetes.io/os: linux

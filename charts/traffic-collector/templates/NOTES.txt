@@ -1,0 +1,21 @@
+1. Get the status of the DaemonSet:
+  kubectl get daemonset -n {{ .Release.Namespace }} {{ include "traffic-collector.fullname" . }}
+
+2. Check the collector logs:
+  kubectl logs -n {{ .Release.Namespace }} -l app={{ include "traffic-collector.name" . }} -f
+
+3. Verify the collector pods are running:
+  kubectl get pods -n {{ .Release.Namespace }} -l app={{ include "traffic-collector.name" . }}
+
+4. Check the health of a collector pod:
+  kubectl exec -n {{ .Release.Namespace }} <pod-name> -- curl http://localhost:{{ .Values.collector.healthCheckPort }}/health
+
+5. Verify traces are being exported:
+  {{- if .Values.tempo.enabled }}
+  - Check Tempo at: {{ .Values.tempo.endpoint }}
+  {{- end }}
+  {{- if .Values.jaeger.enabled }}
+  - Check Jaeger at: http://{{ .Values.jaeger.agentHost }}:{{ .Values.jaeger.agentPort }}
+  {{- end }}
+
+For more information, visit: https://github.com/jarpsimoes/traffic-collector

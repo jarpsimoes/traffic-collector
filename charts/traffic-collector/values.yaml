@@ -1,0 +1,98 @@
+# Default values for traffic-collector.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: jarpsimoes/traffic-collector
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+
+securityContext:
+  allowPrivilegeEscalation: true
+  privileged: true
+  capabilities:
+    add:
+      - NET_ADMIN
+      - SYS_PTRACE
+      - SYS_RESOURCE
+  readOnlyRootFilesystem: false
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+
+tolerations:
+  - operator: Exists
+    effect: NoSchedule
+  - operator: Exists
+    effect: NoExecute
+
+affinity: {}
+
+# Collector configuration
+collector:
+  logLevel: info
+  healthCheckPort: 8080
+  batchSize: 100
+  batchTimeout: 10s
+
+# Tempo configuration
+tempo:
+  enabled: true
+  endpoint: "http://tempo:4317"
+  insecure: true
+
+# Jaeger configuration
+jaeger:
+  enabled: true
+  endpoint: "http://jaeger-collector:14268/api/traces"
+  agentHost: "jaeger-agent"
+  agentPort: 6831
+
+# DaemonSet configuration
+daemonset:
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  hostNetwork: true
+  hostPID: true
+  dnsPolicy: ClusterFirstWithHostNet
+
+# RBAC configuration
+rbac:
+  create: true
+
+# Priority class
+priorityClassName: system-node-critical
+
+# Health check configuration
+healthCheck:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3

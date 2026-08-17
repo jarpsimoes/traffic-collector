@@ -1,0 +1,54 @@
+# Production values for traffic-collector
+
+image:
+  repository: jarpsimoes/traffic-collector
+  tag: "1.0.0"
+  pullPolicy: Always
+
+collector:
+  logLevel: warn
+  batchSize: 500
+  batchTimeout: 30s
+
+tempo:
+  enabled: true
+  endpoint: "tempo.observability.svc.cluster.local:4317"
+  insecure: true
+
+jaeger:
+  enabled: false
+  endpoint: "jaeger-collector.observability:14268"
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 500m
+    memory: 256Mi
+
+nodeSelector:
+  kubernetes.io/os: linux
+  node-role.kubernetes.io/worker: ""
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - traffic-collector
+          topologyKey: kubernetes.io/hostname
+
+priorityClassName: system-node-critical
+
+healthCheck:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 60
+  timeoutSeconds: 10
+  failureThreshold: 5

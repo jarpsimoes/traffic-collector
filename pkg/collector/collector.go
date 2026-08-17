@@ -10,7 +10,6 @@ import (
 	"github.com/jarpsimoes/traffic-collector/pkg/ebpf"
 	"github.com/jarpsimoes/traffic-collector/pkg/exporter"
 	"github.com/jarpsimoes/traffic-collector/pkg/k8s"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
@@ -22,7 +21,7 @@ type Config struct {
 	JaegerEndpoint string
 	BatchSize      int
 	BatchTimeout   time.Duration
-	Logger         *zap.Logger
+	Logger         *zap.SugaredLogger
 }
 
 // NewConfig creates a new Config with defaults from environment
@@ -36,7 +35,9 @@ func NewConfig() *Config {
 	}
 
 	if cfg.NodeName == "" {
-		cfg.NodeName = os.Hostname()
+		if hostname, err := os.Hostname(); err == nil {
+			cfg.NodeName = hostname
+		}
 	}
 
 	return cfg
@@ -52,24 +53,24 @@ func getEnvOrDefault(key, defaultVal string) string {
 // Collector represents the main traffic collection component
 type Collector struct {
 	cfg       *Config
-	logger    *zap.Logger
+	logger    *zap.SugaredLogger
 	ebpf      *ebpf.Program
 	exporters []exporter.Exporter
 	k8sMeta   *k8s.Metadata
 
-	mu           sync.RWMutex
-	running      bool
-	health       bool
-	ready        bool
-	tracesCount  uint64
-	errorsCount  uint64
-	uptime       time.Time
+	mu          sync.RWMutex
+	running     bool
+	health      bool
+	ready       bool
+	tracesCount uint64
+	errorsCount uint64
+	uptime      time.Time
 }
 
 // New creates a new Collector instance
 func New(cfg *Config) (*Collector, error) {
 	if cfg.Logger == nil {
-		cfg.Logger = zap.NewNop()
+		cfg.Logger = zap.NewNop().Sugar()
 	}
 
 	coll := &Collector{
@@ -186,10 +187,10 @@ func (c *Collector) processEvent(ctx context.Context, evt *ebpf.TrafficEvent) er
 		return fmt.Errorf("no tracer available")
 	}
 
-	span := tracer.Start(ctx, "network.traffic",
+	_, span := tracer.Start(ctx, "network.traffic",
 		trace.WithAttributes(
-			// Network attributes
-			// Source and destination would be added from evt
+		// Network attributes
+		// Source and destination would be added from evt
 		))
 	defer span.End()
 
@@ -255,11 +256,11 @@ func (c *Collector) Stats() map[string]interface{} {
 	defer c.mu.RUnlock()
 
 	return map[string]interface{}{
-		"running":       c.running,
-		"healthy":       c.health,
-		"ready":         c.ready,
-		"traces_count":  c.tracesCount,
-		"errors_count":  c.errorsCount,
+		"running":        c.running,
+		"healthy":        c.health,
+		"ready":          c.ready,
+		"traces_count":   c.tracesCount,
+		"errors_count":   c.errorsCount,
 		"uptime_seconds": int(time.Since(c.uptime).Seconds()),
 	}
 }

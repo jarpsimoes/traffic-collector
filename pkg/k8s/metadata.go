@@ -23,17 +23,17 @@ type PodInfo struct {
 
 // Metadata provides Kubernetes metadata enrichment
 type Metadata struct {
-	client     kubernetes.Interface
-	logger     *zap.Logger
-	mu         sync.RWMutex
-	podCache   map[uint32]*PodInfo
-	cacheTTL   int64
+	client   kubernetes.Interface
+	logger   *zap.SugaredLogger
+	mu       sync.RWMutex
+	podCache map[uint32]*PodInfo
+	cacheTTL int64
 }
 
 // NewMetadata creates a new Kubernetes metadata provider
-func NewMetadata(logger *zap.Logger) (*Metadata, error) {
+func NewMetadata(logger *zap.SugaredLogger) (*Metadata, error) {
 	if logger == nil {
-		logger = zap.NewNop()
+		logger = zap.NewNop().Sugar()
 	}
 
 	// Create in-cluster config

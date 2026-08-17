@@ -1,6 +1,7 @@
 package ebpf
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sync"
@@ -11,30 +12,30 @@ import (
 
 // TrafficEvent represents a captured network traffic event
 type TrafficEvent struct {
-	Timestamp  uint64
-	SAddr      uint32
-	DAddr      uint32
-	SPort      uint16
-	DPort      uint16
-	Protocol   uint8
-	PID        uint32
-	TID        uint32
-	BytesSent  uint64
+	Timestamp uint64
+	SAddr     uint32
+	DAddr     uint32
+	SPort     uint16
+	DPort     uint16
+	Protocol  uint8
+	PID       uint32
+	TID       uint32
+	BytesSent uint64
 }
 
 // Program represents the eBPF program
 type Program struct {
 	coll    *ebpf.Collection
-	logger  *zap.Logger
+	logger  *zap.SugaredLogger
 	mu      sync.RWMutex
 	events  chan *TrafficEvent
 	running bool
 }
 
 // NewProgram creates and loads the eBPF program
-func NewProgram(logger *zap.Logger) (*Program, error) {
+func NewProgram(logger *zap.SugaredLogger) (*Program, error) {
 	if logger == nil {
-		logger = zap.NewNop()
+		logger = zap.NewNop().Sugar()
 	}
 
 	p := &Program{
@@ -43,8 +44,8 @@ func NewProgram(logger *zap.Logger) (*Program, error) {
 	}
 
 	// Load compiled eBPF program
-	var spec *ebpf.CollectionSpec
-	if err := ebpf.UnmarshalCollectionSpec(ebpfProgram, &spec); err != nil {
+	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(ebpfProgram))
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal eBPF spec: %w", err)
 	}
 

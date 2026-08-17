@@ -7,7 +7,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdk "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/semconv/v1.21.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
@@ -17,13 +17,13 @@ type TempoExporter struct {
 	tracer   trace.Tracer
 	provider *sdk.TracerProvider
 	exporter sdk.SpanExporter
-	logger   *zap.Logger
+	logger   *zap.SugaredLogger
 }
 
 // NewTempoExporter creates a new Tempo exporter
-func NewTempoExporter(endpoint string, logger *zap.Logger) (*TempoExporter, error) {
+func NewTempoExporter(endpoint string, logger *zap.SugaredLogger) (*TempoExporter, error) {
 	if logger == nil {
-		logger = zap.NewNop()
+		logger = zap.NewNop().Sugar()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*1e9) // 30 seconds
@@ -61,10 +61,10 @@ func NewTempoExporter(endpoint string, logger *zap.Logger) (*TempoExporter, erro
 	logger.Infow("Tempo exporter initialized", "endpoint", endpoint)
 
 	return &TempoExporter{
-		tracer:    tracer,
-		provider:  provider,
-		exporter:  exporter,
-		logger:    logger,
+		tracer:   tracer,
+		provider: provider,
+		exporter: exporter,
+		logger:   logger,
 	}, nil
 }
 

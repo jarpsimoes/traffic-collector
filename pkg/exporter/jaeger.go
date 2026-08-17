@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"go.opentelemetry.io/otel/exporters/jaeger/thrift"
+	"go.opentelemetry.io/otel/exporters/jaeger"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdk "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/semconv/v1.21.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
@@ -17,23 +17,23 @@ type JaegerExporter struct {
 	tracer   trace.Tracer
 	provider *sdk.TracerProvider
 	exporter sdk.SpanExporter
-	logger   *zap.Logger
+	logger   *zap.SugaredLogger
 }
 
 // NewJaegerExporter creates a new Jaeger exporter
-func NewJaegerExporter(endpoint string, logger *zap.Logger) (*JaegerExporter, error) {
+func NewJaegerExporter(endpoint string, logger *zap.SugaredLogger) (*JaegerExporter, error) {
 	if logger == nil {
-		logger = zap.NewNop()
+		logger = zap.NewNop().Sugar()
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*1e9) // 30 seconds
 	defer cancel()
 
 	// Create Jaeger Thrift exporter
-	exporter, err := thrift.New(
-		thrift.WithAgentHost("jaeger-agent"),
-		thrift.WithAgentPort(6831),
-	)
+	exporter, err := jaeger.New(jaeger.WithAgentEndpoint(
+		jaeger.WithAgentHost("jaeger-agent"),
+		jaeger.WithAgentPort("6831"),
+	))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Jaeger exporter: %w", err)
 	}
@@ -60,10 +60,10 @@ func NewJaegerExporter(endpoint string, logger *zap.Logger) (*JaegerExporter, er
 	logger.Infow("Jaeger exporter initialized", "endpoint", endpoint)
 
 	return &JaegerExporter{
-		tracer:    tracer,
-		provider:  provider,
-		exporter:  exporter,
-		logger:    logger,
+		tracer:   tracer,
+		provider: provider,
+		exporter: exporter,
+		logger:   logger,
 	}, nil
 }
 

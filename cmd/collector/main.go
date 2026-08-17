@@ -77,7 +77,7 @@ func run() error {
 	return nil
 }
 
-func setupLogger() *zap.Logger {
+func setupLogger() *zap.SugaredLogger {
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
 		logLevel = "info"
@@ -94,10 +94,10 @@ func setupLogger() *zap.Logger {
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 
 	logger, _ := cfg.Build()
-	return logger
+	return logger.Sugar()
 }
 
-func startHealthServer(logger *zap.Logger, coll *collector.Collector) *http.Server {
+func startHealthServer(logger *zap.SugaredLogger, coll *collector.Collector) *http.Server {
 	port := os.Getenv("HEALTH_CHECK_PORT")
 	if port == "" {
 		port = "8080"

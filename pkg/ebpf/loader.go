@@ -33,6 +33,7 @@ type Program struct {
 	logger  *zap.SugaredLogger
 	mu      sync.RWMutex
 	events  chan *TrafficEvent
+	stopCh  chan struct{}
 	running bool
 }
 
@@ -45,6 +46,7 @@ func NewProgram(logger *zap.SugaredLogger) (*Program, error) {
 	p := &Program{
 		logger: logger,
 		events: make(chan *TrafficEvent, 1000),
+		stopCh: make(chan struct{}),
 	}
 
 	// Load compiled eBPF program
@@ -126,6 +128,11 @@ func (p *Program) readEvents(ctx context.Context) {
 	// Simulate event reading from ring buffer
 	// In production, this would use libbpf or cilium/ebpf ring buffer reader
 	p.logger.Debugw("Event reader started")
+
+	select {
+	case <-ctx.Done():
+	case <-p.stopCh:
+	}
 }
 
 // Events returns the channel for receiving network events
@@ -141,6 +148,7 @@ func (p *Program) Stop(ctx context.Context) error {
 		return nil
 	}
 	p.running = false
+	close(p.stopCh)
 	p.mu.Unlock()
 
 	if p.coll != nil {

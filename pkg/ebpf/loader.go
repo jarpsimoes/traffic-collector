@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	ebpf "github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/rlimit"
 	"go.uber.org/zap"
 )
+
+const defaultProgramPath = "/etc/traffic-collector/program.o"
 
 // TrafficEvent represents a captured network traffic event
 type TrafficEvent struct {
@@ -44,9 +48,18 @@ func NewProgram(logger *zap.SugaredLogger) (*Program, error) {
 	}
 
 	// Load compiled eBPF program
-	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(ebpfProgram))
+	programPath := getProgramPath()
+	programBytes, err := os.ReadFile(programPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal eBPF spec: %w", err)
+		return nil, fmt.Errorf("failed to read eBPF program %q: %w", programPath, err)
+	}
+
+	spec, err := ebpf.LoadCollectionSpecFromReader(bytes.NewReader(programBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal eBPF spec from %q: %w", programPath, err)
+	}
+	if err := rlimit.RemoveMemlock(); err != nil {
+		return nil, fmt.Errorf("failed to remove memlock limit: %w", err)
 	}
 
 	coll, err := ebpf.NewCollection(spec)
@@ -58,6 +71,13 @@ func NewProgram(logger *zap.SugaredLogger) (*Program, error) {
 	logger.Infow("eBPF program loaded successfully")
 
 	return p, nil
+}
+
+func getProgramPath() string {
+	if path := os.Getenv("EBPF_PROGRAM_PATH"); path != "" {
+		return path
+	}
+	return defaultProgramPath
 }
 
 // Start begins the eBPF event collection
@@ -138,7 +158,3 @@ func (p *Program) Close() error {
 	}
 	return nil
 }
-
-// ebpfProgram is the compiled eBPF bytecode
-// This would be embedded from the compiled program.o file
-var ebpfProgram []byte

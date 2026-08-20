@@ -11,6 +11,13 @@ tempo:
   enabled: true
   endpoint: "http://tempo:4317"
   insecure: true
+  basicAuth:
+    enabled: false
+    username: ""
+    password: ""
+    existingSecret: ""
+    usernameKey: username
+    passwordKey: password
 
 jaeger:
   enabled: true

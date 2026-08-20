@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -18,6 +19,9 @@ import (
 type Config struct {
 	NodeName       string
 	TempoEndpoint  string
+	TempoInsecure  bool
+	TempoUsername  string
+	TempoPassword  string
 	JaegerEndpoint string
 	BatchSize      int
 	BatchTimeout   time.Duration
@@ -29,6 +33,9 @@ func NewConfig() *Config {
 	cfg := &Config{
 		NodeName:       os.Getenv("NODE_NAME"),
 		TempoEndpoint:  getEnvOrDefault("TEMPO_ENDPOINT", "http://tempo:4317"),
+		TempoInsecure:  getBoolEnvOrDefault("TEMPO_INSECURE", true),
+		TempoUsername:  os.Getenv("TEMPO_BASIC_AUTH_USERNAME"),
+		TempoPassword:  os.Getenv("TEMPO_BASIC_AUTH_PASSWORD"),
 		JaegerEndpoint: getEnvOrDefault("JAEGER_ENDPOINT", "http://jaeger-collector:14268"),
 		BatchSize:      100,
 		BatchTimeout:   10 * time.Second,
@@ -46,6 +53,16 @@ func NewConfig() *Config {
 func getEnvOrDefault(key, defaultVal string) string {
 	if val := os.Getenv(key); val != "" {
 		return val
+	}
+	return defaultVal
+}
+
+func getBoolEnvOrDefault(key string, defaultVal bool) bool {
+	if val := os.Getenv(key); val != "" {
+		parsed, err := strconv.ParseBool(val)
+		if err == nil {
+			return parsed
+		}
 	}
 	return defaultVal
 }
@@ -110,7 +127,7 @@ func New(cfg *Config) (*Collector, error) {
 
 func (c *Collector) initExporters() error {
 	// Initialize Tempo exporter (OTLP)
-	tempoExp, err := exporter.NewTempoExporter(c.cfg.TempoEndpoint, c.logger)
+	tempoExp, err := exporter.NewTempoExporter(c.cfg.TempoEndpoint, c.cfg.TempoInsecure, c.cfg.TempoUsername, c.cfg.TempoPassword, c.logger)
 	if err != nil {
 		c.logger.Warnw("Failed to initialize Tempo exporter", "error", err, "endpoint", c.cfg.TempoEndpoint)
 	} else {

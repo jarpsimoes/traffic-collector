@@ -5,9 +5,9 @@
 replicaCount: 1
 
 image:
-  repository: jarpsimoes/traffic-collector
+  repository: ghcr.io/jarpsimoes/traffic-collector
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "390afabb565540e44683d4459f0b9f2767671b9c"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -62,12 +62,19 @@ collector:
 # Tempo configuration
 tempo:
   enabled: true
-  endpoint: "http://tempo:4317"
-  insecure: true
+  endpoint: "tempo-prod-31-prod-eu-west-6.grafana.net:443"
+  insecure: false
+  basicAuth:
+    enabled: true
+    username: ""
+    password: ""
+    existingSecret: "alloy-statefulset-secrets"
+    usernameKey: tempo_username
+    passwordKey: tempo_password
 
 # Jaeger configuration
 jaeger:
-  enabled: true
+  enabled: false
   endpoint: "http://jaeger-collector:14268/api/traces"
   agentHost: "jaeger-agent"
   agentPort: 6831

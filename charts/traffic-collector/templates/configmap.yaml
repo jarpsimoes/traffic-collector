@@ -19,6 +19,8 @@ data:
       enabled: true
       endpoint: {{ .Values.tempo.endpoint }}
       insecure: {{ .Values.tempo.insecure }}
+      basicAuth:
+        enabled: {{ .Values.tempo.basicAuth.enabled }}
     {{- end }}
     
     {{- if .Values.jaeger.enabled }}

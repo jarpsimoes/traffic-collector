@@ -2,7 +2,10 @@ package exporter
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -21,20 +24,33 @@ type TempoExporter struct {
 }
 
 // NewTempoExporter creates a new Tempo exporter
-func NewTempoExporter(endpoint string, logger *zap.SugaredLogger) (*TempoExporter, error) {
+func NewTempoExporter(endpoint string, insecure bool, username, password string, logger *zap.SugaredLogger) (*TempoExporter, error) {
 	if logger == nil {
 		logger = zap.NewNop().Sugar()
+	}
+	if (username == "") != (password == "") {
+		return nil, fmt.Errorf("tempo basic auth requires both username and password")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*1e9) // 30 seconds
 	defer cancel()
 
-	// Create OTLP gRPC exporter
-	exporter, err := otlptracegrpc.New(
-		ctx,
+	endpoint = normalizeTempoEndpoint(endpoint)
+	options := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint(endpoint),
-		otlptracegrpc.WithInsecure(),
-	)
+	}
+	if insecure {
+		options = append(options, otlptracegrpc.WithInsecure())
+	}
+	if username != "" {
+		credentials := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
+		options = append(options, otlptracegrpc.WithHeaders(map[string]string{
+			"authorization": "Basic " + credentials,
+		}))
+	}
+
+	// Create OTLP gRPC exporter
+	exporter, err := otlptracegrpc.New(ctx, options...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OTLP exporter: %w", err)
 	}
@@ -80,4 +96,24 @@ func (t *TempoExporter) Stop(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func normalizeTempoEndpoint(endpoint string) string {
+	parsed, err := url.Parse(endpoint)
+	if err != nil || parsed.Host == "" {
+		return endpoint
+	}
+
+	if parsed.Port() != "" {
+		return parsed.Host
+	}
+
+	switch strings.ToLower(parsed.Scheme) {
+	case "https":
+		return parsed.Hostname() + ":443"
+	case "http":
+		return parsed.Hostname() + ":80"
+	default:
+		return parsed.Host
+	}
 }

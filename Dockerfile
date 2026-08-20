@@ -41,7 +41,7 @@ COPY . .
 # Build eBPF programs
 RUN mkdir -p /build/bin && \
     bpftool btf dump file /sys/kernel/btf/vmlinux format c > pkg/ebpf/bpf/vmlinux.h && \
-    ${CLANG} -O2 -target bpf -c pkg/ebpf/bpf/program.c -o /build/bin/program.o
+    ${CLANG} -O2 -g -target bpf -c pkg/ebpf/bpf/program.c -o /build/bin/program.o
 
 # Build Go binary
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} go build \

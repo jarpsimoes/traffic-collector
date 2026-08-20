@@ -14,6 +14,13 @@ tempo:
   enabled: true
   endpoint: "tempo.observability.svc.cluster.local:4317"
   insecure: true
+  basicAuth:
+    enabled: false
+    username: ""
+    password: ""
+    existingSecret: ""
+    usernameKey: username
+    passwordKey: password
 
 jaeger:
   enabled: false

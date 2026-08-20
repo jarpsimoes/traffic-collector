@@ -55,8 +55,14 @@ helm install traffic-collector ./charts/traffic-collector \
 | Parameter | Description | Default |
 |-----------|-------------|----------|
 | `tempo.enabled` | Enable Tempo exporter | `true` |
-| `tempo.endpoint` | Tempo OTLP gRPC endpoint | `http://tempo:4317` |
-| `tempo.insecure` | Use insecure connection | `true` |
+| `tempo.endpoint` | Tempo OTLP gRPC endpoint | `https://tempo-prod-31-prod-eu-west-6.grafana.net/tempo` |
+| `tempo.insecure` | Use insecure connection | `false` |
+| `tempo.basicAuth.enabled` | Enable Basic auth for Tempo | `false` |
+| `tempo.basicAuth.username` | Basic auth username for a chart-managed Secret | `""` |
+| `tempo.basicAuth.password` | Basic auth password for a chart-managed Secret | `""` |
+| `tempo.basicAuth.existingSecret` | Existing Secret containing Basic auth credentials | `""` |
+| `tempo.basicAuth.usernameKey` | Username key in the Tempo auth Secret | `username` |
+| `tempo.basicAuth.passwordKey` | Password key in the Tempo auth Secret | `password` |
 
 ### Jaeger Configuration
 
@@ -96,6 +102,30 @@ helm install traffic-collector ./charts/traffic-collector \
   --set jaeger.enabled=false \
   --namespace monitoring \
   --create-namespace
+```
+
+### Grafana Cloud Tempo
+
+Create a Secret containing your Grafana Cloud Tempo instance ID as the username and a Grafana Cloud access policy token as the password:
+
+```bash
+kubectl create secret generic grafana-cloud-tempo \
+  --namespace monitoring \
+  --from-literal=username='<tempo-instance-id>' \
+  --from-literal=password='<grafana-cloud-token>'
+```
+
+Then install the chart with TLS and Basic auth enabled:
+
+```bash
+helm install traffic-collector ./charts/traffic-collector \
+  --namespace monitoring \
+  --create-namespace \
+  --set tempo.endpoint='<grafana-cloud-tempo-otlp-grpc-host>:443' \
+  --set tempo.insecure=false \
+  --set tempo.basicAuth.enabled=true \
+  --set tempo.basicAuth.existingSecret=grafana-cloud-tempo \
+  --set jaeger.enabled=false
 ```
 
 ### Production Deployment with Jaeger

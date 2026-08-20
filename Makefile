@@ -3,7 +3,7 @@
 # Variables
 BINARY_NAME := traffic-collector
 MAIN_PATH := ./cmd/collector
-BILD_DIR := bin
+BUILD_DIR := bin
 IMAGE_NAME := traffic-collector
 REGISTRY ?= docker.io/jarpsimoes
 VERSION ?= latest
@@ -34,7 +34,7 @@ clean: ## Clean build artifacts
 ebpf-build: ## Build eBPF programs
 	@echo "Building eBPF programs..."
 	@mkdir -p $(BUILD_DIR)
-	$(CLANG) -O2 -target bpf -c pkg/ebpf/program.c -o $(BUILD_DIR)/program.o
+	$(CLANG) -O2 -g -target bpf -c pkg/ebpf/bpf/program.c -o $(BUILD_DIR)/program.o
 	@echo "eBPF program built: $(BUILD_DIR)/program.o"
 
 build: ebpf-build ## Build the binary

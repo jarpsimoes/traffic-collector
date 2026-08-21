@@ -11,6 +11,7 @@ import (
 	"github.com/jarpsimoes/traffic-collector/pkg/ebpf"
 	"github.com/jarpsimoes/traffic-collector/pkg/exporter"
 	"github.com/jarpsimoes/traffic-collector/pkg/k8s"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
@@ -206,8 +207,16 @@ func (c *Collector) processEvent(ctx context.Context, evt *ebpf.TrafficEvent) er
 
 	_, span := tracer.Start(ctx, "network.traffic",
 		trace.WithAttributes(
-		// Network attributes
-		// Source and destination would be added from evt
+			attribute.String("network.transport", evt.ProtocolName()),
+			attribute.String("network.direction", "egress"),
+			attribute.String("source.address", evt.SourceIP().String()),
+			attribute.Int("source.port", int(evt.SPort)),
+			attribute.String("destination.address", evt.DestinationIP().String()),
+			attribute.Int("destination.port", int(evt.DPort)),
+			attribute.Int64("network.bytes", int64(evt.BytesSent)),
+			attribute.Int("process.pid", int(evt.PID)),
+			attribute.Int("thread.id", int(evt.TID)),
+			attribute.String("k8s.node.name", c.cfg.NodeName),
 		))
 	defer span.End()
 

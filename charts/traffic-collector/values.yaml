@@ -7,7 +7,7 @@ replicaCount: 1
 image:
   repository: ghcr.io/jarpsimoes/traffic-collector
   pullPolicy: IfNotPresent
-  tag: "62fd82c54033d7b19caedc9ffa847f5811494c54"
+  tag: "67fb3456d2c2df13af947aea4b3d2e006c82cb8e"
 
 imagePullSecrets: []
 nameOverride: ""

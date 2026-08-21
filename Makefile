@@ -10,6 +10,8 @@ VERSION ?= latest
 GO := go
 CLANG := clang
 LLC := llc
+UNAME_M := $(shell uname -m)
+BPF_TARGET_ARCH := $(if $(filter x86_64,$(UNAME_M)),x86,$(if $(filter aarch64 arm64,$(UNAME_M)),arm64,$(UNAME_M)))
 
 # Go build variables
 LDFLAGS := -ldflags "-s -w -X main.Version=$(VERSION)"
@@ -34,7 +36,7 @@ clean: ## Clean build artifacts
 ebpf-build: ## Build eBPF programs
 	@echo "Building eBPF programs..."
 	@mkdir -p $(BUILD_DIR)
-	$(CLANG) -O2 -g -target bpf -c pkg/ebpf/bpf/program.c -o $(BUILD_DIR)/program.o
+	$(CLANG) -O2 -g -target bpf -D__TARGET_ARCH_$(BPF_TARGET_ARCH) -c pkg/ebpf/bpf/program.c -o $(BUILD_DIR)/program.o
 	@echo "eBPF program built: $(BUILD_DIR)/program.o"
 
 build: ebpf-build ## Build the binary

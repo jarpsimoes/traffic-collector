@@ -41,7 +41,9 @@ COPY . .
 # Build eBPF programs
 RUN mkdir -p /build/bin && \
     bpftool btf dump file /sys/kernel/btf/vmlinux format c > pkg/ebpf/bpf/vmlinux.h && \
-    ${CLANG} -O2 -g -target bpf -c pkg/ebpf/bpf/program.c -o /build/bin/program.o
+    BPF_TARGET_ARCH="$TARGETARCH" && \
+    if [ "$BPF_TARGET_ARCH" = "amd64" ]; then BPF_TARGET_ARCH="x86"; fi && \
+    ${CLANG} -O2 -g -target bpf -D__TARGET_ARCH_${BPF_TARGET_ARCH} -c pkg/ebpf/bpf/program.c -o /build/bin/program.o
 
 # Build Go binary
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} go build \

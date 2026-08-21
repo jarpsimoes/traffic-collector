@@ -50,22 +50,36 @@ struct {
     __type(value, struct connection_info);
 } connections SEC(".maps");
 
-/* TCP events */
-int trace_tcp_sendmsg(struct pt_regs *ctx, struct sock *sk, struct msghdr *msg, size_t size) {
+static __always_inline void read_socket_tuple(struct sock *sk, __u32 *saddr, __u32 *daddr, __u16 *sport, __u16 *dport) {
+    __u16 dport_raw = 0;
+
+    bpf_probe_read_kernel(sport, sizeof(*sport), (char *)sk + offsetof(struct sock, __sk_common.skc_num));
+    bpf_probe_read_kernel(saddr, sizeof(*saddr), (char *)sk + offsetof(struct sock, __sk_common.skc_rcv_saddr));
+    bpf_probe_read_kernel(daddr, sizeof(*daddr), (char *)sk + offsetof(struct sock, __sk_common.skc_daddr));
+    bpf_probe_read_kernel(&dport_raw, sizeof(dport_raw), (char *)sk + offsetof(struct sock, __sk_common.skc_dport));
+
+    *dport = bpf_ntohs(dport_raw);
+}
+
+SEC("kprobe/tcp_sendmsg")
+int trace_tcp_sendmsg(struct pt_regs *ctx) {
     struct traffic_event *event;
     struct connection_key conn_key = {};
     struct connection_info *conn_info;
     __u64 pid_tgid;
-    __u16 family;
+    __u64 timestamp;
+    struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
+    size_t size = (size_t)PT_REGS_PARM3(ctx);
 
     // Get current PID/TID
     pid_tgid = bpf_get_current_pid_tgid();
 
     // Get socket info
-    __u16 sport = sk->__sk_common.skc_num;
-    __u32 saddr = sk->__sk_common.skc_rcv_saddr;
-    __u32 daddr = sk->__sk_common.skc_daddr;
-    __u16 dport = bpf_ntohs(sk->__sk_common.skc_dport);
+    __u16 sport = 0;
+    __u32 saddr = 0;
+    __u32 daddr = 0;
+    __u16 dport = 0;
+    read_socket_tuple(sk, &saddr, &daddr, &sport, &dport);
 
     // Reserve space in ring buffer
     event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
@@ -73,7 +87,8 @@ int trace_tcp_sendmsg(struct pt_regs *ctx, struct sock *sk, struct msghdr *msg, 
         return 0;
 
     // Fill event
-    event->timestamp = bpf_ktime_get_ns();
+    timestamp = bpf_ktime_get_ns();
+    event->timestamp = timestamp;
     event->saddr = saddr;
     event->daddr = daddr;
     event->sport = sport;
@@ -102,7 +117,7 @@ int trace_tcp_sendmsg(struct pt_regs *ctx, struct sock *sk, struct msghdr *msg, 
             .bytes_sent = size,
             .packets_recv = 0,
             .bytes_recv = 0,
-            .start_time = event->timestamp,
+            .start_time = timestamp,
         };
         bpf_map_update_elem(&connections, &conn_key, &new_conn, 0);
     }
@@ -110,17 +125,20 @@ int trace_tcp_sendmsg(struct pt_regs *ctx, struct sock *sk, struct msghdr *msg, 
     return 0;
 }
 
-/* UDP events */
-int trace_udp_sendmsg(struct pt_regs *ctx, struct sock *sk, struct msghdr *msg, size_t len) {
+SEC("kprobe/udp_sendmsg")
+int trace_udp_sendmsg(struct pt_regs *ctx) {
     struct traffic_event *event;
     __u64 pid_tgid;
+    struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
+    size_t len = (size_t)PT_REGS_PARM3(ctx);
 
     pid_tgid = bpf_get_current_pid_tgid();
 
-    __u16 sport = sk->__sk_common.skc_num;
-    __u32 saddr = sk->__sk_common.skc_rcv_saddr;
-    __u32 daddr = sk->__sk_common.skc_daddr;
-    __u16 dport = bpf_ntohs(sk->__sk_common.skc_dport);
+    __u16 sport = 0;
+    __u32 saddr = 0;
+    __u32 daddr = 0;
+    __u16 dport = 0;
+    read_socket_tuple(sk, &saddr, &daddr, &sport, &dport);
 
     event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
     if (!event)
@@ -138,11 +156,5 @@ int trace_udp_sendmsg(struct pt_regs *ctx, struct sock *sk, struct msghdr *msg, 
 
     bpf_ringbuf_submit(event, 0);
 
-    return 0;
-}
-
-/* Syscall tracepoint for network events */
-TRACEPOINT_PROBE(syscalls, sys_enter_write) {
-    // Track write syscalls for additional network visibility
     return 0;
 }
